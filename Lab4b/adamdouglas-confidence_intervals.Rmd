@@ -1,11 +1,11 @@
 ---
 title: 'Foundations for statistical inference - Confidence intervals'
 output:
-  pdf_document: default
   html_document:
     css: ./lab.css
     highlight: pygments
     theme: cerulean
+  pdf_document: default
 ---
 
 ## Sampling from Ames, Iowa
