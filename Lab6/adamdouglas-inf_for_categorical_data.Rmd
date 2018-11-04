@@ -1,11 +1,11 @@
 ---
 title: 'Inference for categorical data'
 output:
+  pdf_document: default
   html_document:
     css: ./lab.css
     highlight: pygments
     theme: cerulean
-  pdf_document: default
 ---
 
 In August of 2012, news outlets ranging from the [Washington
@@ -386,8 +386,8 @@ inference(us05$response, est = "proportion", type = "ci", method = "theoretical"
 
 **Since we do not know what to expect for $p$, we use the worst-case of 0.50 because, as shown above, that gives us the worst margin of error. We can then calculate the minimum sample size to achieve this maximum level of error:**
 
-$$1.96^2\times\frac{0.5^2}{n}\lt0.01^2$$
-$$3.8416\times\frac{0.025}{0.0001}\lt n = 960.4$$
+$$1.96^{2} \times \frac{0.5^{2}}{n} < 0.01{^2}$$
+$$3.8416 \times \frac{0.025}{0.0001} < n = 960.4$$
 **We would need a sample size of at leaast 961 to ensure a margin of error no greater than 0.01.**
 
 
