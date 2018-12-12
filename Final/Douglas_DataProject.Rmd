@@ -1,0 +1,331 @@
+---
+title: "DATA606 - Data Project"
+author: "Adam Douglas"
+date: "12/9/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(forcats)
+```
+
+##Goal
+The goal of this project is to investigate whether a correlation exists between the types of media typically consumed by a voter (or the sources of such media), and their attitude towards the two major party candidates of the 2016 United States presidential election.
+
+***
+
+##Data Collection
+My data was courtesy of the American National Election Studies (ANES), a survey conducted by is a collaboration between Stanford University and the University of Michigan, with funding by the National Science Foundation[^1].
+
+I loaded the data from a pipe-delimited file with the assistance of the "readr" package, part of the Hadley Wickham Tidyverse[^2] series of packages.
+
+```{r load data, echo = FALSE}
+# Load data via a pipe-delimited file, using character type for all columns
+rawData <- read_delim("anes_timeseries_2016_rawdata.txt","|",
+                      col_types= paste(rep("c",1290),sep="",collapse=""))
+```
+
+The raw data had 1,290 variables in total, well more than one could reasonably work with. So, I wanted to narrow our data down to some of the most interesting variables that can help reach the stated goal.
+
+By using the provided user guide and codebook (also on the website[^3]), I was able to select some appropriate variables into a new (and smaller) data frame. The variables I selected are:
+
+| Variable         | Description                                     |
+|:-----------------|:------------------------------------------------|
+|`ID`| Unique identifier for the survey respondent|
+|`surveyMethod`| Defines if the respondent did only a pre-election survey or a pre and post-election survey|
+|`sex`| Observational gender variable|
+|`state`| Current state of residence for the respondent|
+|`payAttPol`| How often the respondent pays attention to politics|
+|`TVNews`| Respondent heard about the campaign via television news|
+|`newspapers`| Respondent heard about the campaign via newspapers|
+|`TVTalk`| Respondent heard about the campaign via television talk shows|
+|`internet`| Respondent heard about the campaign via internet web sites|
+|`radio`| Respondent heard about the campaign via television news|
+|`none`| Respondent heard about the campaign via none of these methods|
+|`yahoo`| Respondent frequents Yahoo.com for news about the campaign|
+|`CNN`| Respondent frequents CNN.com for news about the campaign|
+|`NBC`|  Respondent frequents NBC.com for news about the campaign|
+|`huff`| Respondent frequents huffingtonpost.com for news about the campaign|
+|`CBS`| Respondent frequents cbsnews.com for news about the campaign|
+|`USA`|  Respondent frequents usatoday.com for news about the campaign|
+|`nyt`|  Respondent frequents newyorktimes.com for news about the campaign|
+|`FOX`|  Respondent frequents foxnews.com for news about the campaign|
+|`wapo`|  Respondent frequents washingtonpost.com for news about the campaign|
+|`BBC`|  Respondent frequents bbcnews.com for news about the campaign|
+|`guardian`|  Respondent frequents theguardian.com for news about the campaign|
+|`ABC`|  Respondent frequents abcnews.com for news about the campaign|
+|`other`|  Respondent frequents some other website for news about the campaign|
+|`clinton`| Respondent's opinion of candidate Hillary Clinton (0-100)|
+|`trump`| Respondent's opinion of candidate Donald Trump (0-100)|
+|`bothCandidates`| Derived variable. Variable `trump` minus variable `clinton`| 
+
+
+```{r feature selection, echo=FALSE}
+# Creates the data frame and begins with the unique identifier, Case Id
+survey <- data.frame(ID = as.character(rawData$V160001))
+
+# Method of interview
+survey$surveyMethod <- fct_recode(rawData$V160501,
+                                  "Face-To-Face" = "1", 
+                                  "Web" = "2")
+
+# Survey done pre/post election
+survey$surveyType <- fct_recode(rawData$V160502,
+                                "Only Pre" = "0",
+                                "Pre and Post" = "1")
+
+# Gender (face-to-face only)
+survey$sex <- fct_recode(rawData$V161002,
+                         "Male" = " 1",
+                         "Female" = " 2",
+                         NULL = "-1")
+
+# State
+survey$state <- as_factor(rawData$V163001b)
+
+# How often respondent pays attention to politics
+survey$payAttPol <- fct_recode(rawData$V161003, 
+                               "Always" = "1", "Most of the time" = "2", 
+                               "About half of the time" = "3", 
+                               "Some of the time" = "4", "Never" = "5")
+
+# Heard things about the campaigns via...
+# TV News
+survey$TVNews <- fct_recode(rawData$V161363a, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-5", NULL = "-9")
+# Newspapers
+survey$newspapers <- fct_recode(rawData$V161363b, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-5", NULL = "-9")
+# TV talk shows and news aNULLlysis
+survey$TVTalk <- fct_recode(rawData$V161363c, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-5", NULL = "-9")
+# Internet sites, chat rooms, blogs
+survey$internet <- fct_recode(rawData$V161363d, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-5", NULL = "-9")
+# Radio talk shows and news
+survey$radio <- fct_recode(rawData$V161363e, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-5", NULL = "-9")
+# None
+survey$none <- fct_recode(rawData$V161363f, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-5", NULL = "-9")
+
+# Respondent visits these selected websites regularly...
+# Yahoo News
+survey$yahoo <- fct_recode(rawData$V161444, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# CNN.com
+survey$CNN <- fct_recode(rawData$V161445, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# NBCNews.com
+survey$NBC <- fct_recode(rawData$V161446, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# Huffington Post
+survey$huff <- fct_recode(rawData$V161447, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# CBSNews.com
+survey$CBS <- fct_recode(rawData$V161448, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# USAToday
+survey$USA <- fct_recode(rawData$V161449, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# NYTimes.com
+survey$NYT <- fct_recode(rawData$V161451, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# Foxnews.com
+survey$FOX <- fct_recode(rawData$V161452, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# washingtonpost.com
+survey$wapo <- fct_recode(rawData$V161454, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# BBC News
+survey$BBC <- fct_recode(rawData$V161456, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# The Guardian
+survey$guardian <- fct_recode(rawData$V161457, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# abcnews.com
+survey$ABC <- fct_recode(rawData$V161458, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+# other website
+survey$other <- fct_recode(rawData$V161459, 
+                               "Yes" = " 1", "No" = " 0",
+                               NULL = "-1", NULL = "-5", NULL = "-9")
+
+# Our outcome variables - sentiment about the candidates
+survey$clinton <- as.numeric(rawData$V161086)
+survey$clinton[survey$clinton < 0] <- NA
+
+survey$trump <- as.numeric(rawData$V161087)
+survey$trump[survey$trump < 0] <- NA
+
+survey <- survey %>% mutate(bothCandidates = trump - clinton)
+```
+
+***
+
+## Exploration
+
+First I looked at the distribution of scores for the candidates, since these will be the variables we're trying to find correlations to.
+
+```{r,  echo=FALSE}
+cat("Trump: \n")
+summary(survey$trump)
+cat("Clinton: \n")
+summary(survey$clinton)
+```
+
+The summaries show  pretty similar distributions. However, there is a difference in median and mean values, suggesting that Mr. Trump did not enjoy as high popularity scores amongst respondents as his opponent did.
+ 
+This is slightly more evident with the help of a few visualizations:
+```{r, echo=FALSE}
+survey %>% drop_na(clinton, trump) %>%
+  gather("Candidate","Rating",trump,clinton) %>%
+  select(ID, Candidate, Rating) %>%
+  ggplot(aes(y=Rating, x=Candidate)) +
+  geom_boxplot(fill=c("dodgerblue2","firebrick3")) +
+  ggtitle("Candidate Ratings") +
+  stat_summary(fun.y=mean, colour="black", geom="point", 
+               shape=18, size=3,show.legend = FALSE)
+```
+
+```{r, echo=FALSE}
+survey %>% drop_na(clinton, trump) %>%
+  gather("Candidate","Rating",trump,clinton) %>%
+  select(ID, Candidate, Rating) %>%
+  ggplot(aes(x=Rating, fill=Candidate)) +
+  geom_histogram(bins=20) +
+  ggtitle("Candidate Ratings") +
+  scale_fill_manual(values=c("dodgerblue2","firebrick3")) +
+  facet_wrap(~ Candidate,nrow=2,ncol=2)
+
+```
+
+The election has been characterized in the media as one where people didn't vote *for* a candidate they liked, but rather voted *against* the one they did not like. The distribution of scores seems to support that theory to some degree, judging by the large number of 0 scores for each candidate.
+
+Turning to the explanatory variables, I looked next at how the respondents to the survey got their election news:
+
+```{r, echo=FALSE}
+f <- function(x,...){sum(as.numeric(x=="Yes"),...)}
+survey %>% select(TVNews, newspapers, TVTalk, internet) %>%
+  summarize_all(f,na.rm=T) %>% gather(Method,Number) %>%
+  ggplot(aes(Method,Number,fill=Method)) +
+  geom_col() + ggtitle("Sources of Election Information") +
+  ylab("# Respondents")
+```
+
+Sources seem to have been evenly spread across all 4 sources.
+
+Because of the rise in the importance of the internet as a source of news, I wanted to focus on web sources. This graph shows the breakouts of which sources of election news were visited by respondents:
+
+```{r, echo=FALSE}
+lbl <- c("ABC","BBC","CBS","CNN","Fox","The Guardian","Huffington Post",
+         "NBC","NY Times","USA Today","Washington Post","Yahoo!")
+
+survey %>% select(yahoo, CNN, NBC, huff, CBS, USA,
+                  NYT, FOX, wapo, BBC, guardian, ABC) %>%
+  summarize_all(f,na.rm=T) %>% gather(Site,Number) %>%
+  ggplot(aes(Site,Number,fill=Site)) +
+  geom_col() + ggtitle("Sources of Election Information","Internet") +
+  ylab("# Respondents") + scale_x_discrete(labels=lbl) +
+  scale_fill_discrete(labels=lbl) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Interestingly, a lot of respondents use Yahoo! news. Admittedly, I was surprised to see that result, but less surprised to see CNN, Fox, and Huffington Post as frequently-visited sites for election news.
+
+***
+
+## Analysis
+
+Next I began looking at building linear regression models to see how well correlated these news sources were to respondents' ratings of the candidates.
+
+The dependent variable I used was `bothCandidates`, which is simply the rating of `trump` minus the rating of `clinton`. So, a score of $< 0$ represents preference to candidate Clinton while $> 0$ represents preference to candidate Trump.
+
+The first model used variables representing the source of election news: `TVNews`, `newspapers`, `TVTalk`, and `internet`.
+
+```{r, echo = FALSE}
+model1 <- lm(bothCandidates ~ TVNews + newspapers +
+         TVTalk + internet, data = survey)
+
+summary(model1)
+```
+
+Looking at the above summary, this model does very little to show any linear correlation between these variables and candidate preference. Even when I removed more variables (*not shown here*), the adjusted R-squared never rises above 0.01.
+
+I surmised that maybe the delivery format of the news was less important than the *source* of the information. So, I took the website variables and built a full linear regression model:
+
+```{r, echo=FALSE}
+model_net <- lm(bothCandidates ~ yahoo + CNN + NBC + huff + CBS + USA +
+                  NYT + FOX + wapo + BBC + guardian + ABC, data = survey)
+
+summary(model_net)
+```
+
+Looking at the adjusted R-squared, this model is a bit more usable than the first one. Since some of the parameter estimates appear to not be statistically significant than others, I decided to remove one variable at a time and see how that impacts the model.
+
+Below is the best model based on adjusted R-squared (*interim models not shown*):
+```{r, echo=FALSE}
+model_net <- lm(bothCandidates ~ yahoo + CNN + NBC + huff + CBS +
+                  NYT + FOX + wapo + BBC + ABC, data = survey)
+
+summary(model_net)
+```
+
+At an adjusted R-squared of 0.1837, it certainly isn't anything to write home about. However the signs of the parameter estimates are interesting in and of themselves, as they show a possible correlation between source of internet news and candidate preference.
+
+### Model Assumptions
+This type of linear model requires that some assumptions be met. Right off the bat, I know that the source of news variables and website variables are *not* independent. In fact, respondents can (and often did) choose more than one. So, there can be some collinearity.
+
+Next, I exampined the residuals. They should be more or less normally distributed, which it appears that they (somewhat) are from the graph below:
+```{r, echo=FALSE}
+resid <- data.frame(residuals = model_net$residuals)
+ggplot(resid, aes(x=residuals)) + 
+  geom_histogram(bins=20, fill="forestgreen") +
+  ggtitle("Residuals")
+```
+
+Next, I checked for uniform variability by plotting the residual values against the predicted values:
+
+```{r, echo=FALSE}
+fitted <- data.frame(fitted = model_net$fitted.values)
+ggplot(fitted, aes(x=fitted,y=resid$residuals)) +
+  geom_point(alpha=0.25, col="forestgreen") +
+  ggtitle("Fitted vs. Residuals") + xlab("Fitted Value") +
+  ylab("Residual")
+```
+
+There is definitely a pattern in the above plot. So, there could be other variables in the survey that is causing the pattern and, if added to the model, may add more accuracy. With another 1,262 variables that is certainly possible.
+
+***
+
+##Conclusion
+In conclusion, there seems to be a pattern of some kind between the specific source of election-related news and a person's candidate preference. However, with the large number of variables, such a pattern may be difficult to detect with any degree of accuracy.
+
+Also, such a pattern may not be linear in nature and may require more advanced techniques to properly quantify.
+
+
+[^1]: The American National Election Studies (www.electionstudies.org).
+[^2]: https://www.tidyverse.org
+[^3]: The American National Election Studies (www.electionstudies.org).
